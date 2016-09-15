@@ -26,6 +26,25 @@ module.exports = function(sequelize, DataTypes) {
         // associations can be defined here
       }
     }
+  }, {
+    instanceMethods: {
+      validatePassword: function (email, pw) {
+        db.user.findOne({
+          where: { email: email }
+        }).then(function (data) {
+          bcrypt.compare(pw, data.password, function (err, res) {
+            return res;
+          });
+        });
+      },
+      encodePassword: function (pw) {
+        bcrypt.genSalt(10, function(err, salt) {
+          bcrypt.hash(pw, salt, function(err, hash) {
+            return hash;
+          });
+        });
+      }
+    }
   });
   return user;
 };
