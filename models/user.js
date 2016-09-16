@@ -1,48 +1,66 @@
 'use strict';
+
+var bcrypt = require('bcrypt');
+
 module.exports = function(sequelize, DataTypes) {
-  var user = sequelize.define('user', {
+  // format from docs: define(modelName, attributes, [options])
+  // [options] must be contained in a single object!
+  var user = sequelize.define('user', { // modelName = 'user'
+
+    // attributes
     name: {
       type: DataTypes.STRING,
       validate: {
-        isAlpha: true
+        len: {
+          args: [1, 99],
+          msg: 'Name must be between 1 and 99 characters'
+        }
       }
     },
     email: {
       type: DataTypes.STRING,
       validate: {
-        isEmail: true
+        isEmail: {
+          msg: 'Invalid email address, try again'
+        }
       }
     },
     password: {
       type: DataTypes.STRING,
       validate: {
-        len: [6, 12],
-        isAlphanumeric: true
+        len: {
+          args: [8, 99],
+          msg: 'Password must be between 8 and 99 characters'
+        }
       }
     }
-  }, {
+  }, {  // [options]
+    hooks: {
+      beforeCreate: function (createdUser, options, cb) {
+        // hash the password
+        var hash = bcrypt.hashSync(createdUser.password, 10);
+        // store the hash as the user's password
+        createdUser.password = hash;
+        // continue to save the user, with no errors
+        cb(null, createdUser);
+      }
+    },
     classMethods: {
-      associate: function(models) {
+      associate: function (models) {
         // associations can be defined here
       }
-    }
-  }, {
+    },
     instanceMethods: {
-      validatePassword: function (email, pw) {
-        db.user.findOne({
-          where: { email: email }
-        }).then(function (data) {
-          bcrypt.compare(pw, data.password, function (err, res) {
-            return res;
-          });
-        });
+      validPassword: function (password) {
+        // return if the password matches the hash
+        return bcrypt.compareSync(password, this.password);
       },
-      encodePassword: function (pw) {
-        bcrypt.genSalt(10, function(err, salt) {
-          bcrypt.hash(pw, salt, function(err, hash) {
-            return hash;
-          });
-        });
+      toJSON: function () {
+        // get the user's JSON data
+        var jsonUser = this.get();
+        // delete the password from the JSON data, and return
+        delete jsonUser.password;
+        return jsonUser;
       }
     }
   });
